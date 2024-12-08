@@ -1,118 +1,66 @@
 // ==UserScript==
-// @name         Flipanim Dark Mode with Auto Update Check
+// @name         Flipanim Auto Update
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0
-// @description  Adds dark mode toggle to Flipanim and checks for updates from GitHub
-// @author       GavorGif
-// @match        https://flipanim.com/*
-// @grant        GM_addStyle
+// @version      1.0
+// @description  Checks for updates and installs the latest version of flipanim.user.js
+// @author       You, but like, cooler
+// @match        *://*/*
 // @grant        GM_xmlhttpRequest
-// @run-at       document-end
+// @grant        GM_addStyle
+// @grant        GM_setValue
+// @grant        GM_getValue
 // ==/UserScript==
 
-// Version check configuration
-const currentVersion = '1.1.0';  // Update this with the new version
-const repoURL = 'https://github.com/Gavor-gif/Flipanim-test/raw/main/flipanim.user.js';  // Link to raw userscript
+(function() {
+    'use strict';
 
-// GitHub API to check for the latest version of the userscript
-function checkForUpdates() {
-    GM_xmlhttpRequest({
-        method: 'GET',
-        url: 'https://api.github.com/repos/Gavor-gif/Flipanim-test/releases/latest',
-        onload: function(response) {
-            const latestVersion = JSON.parse(response.responseText).tag_name;
-            if (latestVersion !== currentVersion) {
-                if (confirm(`A new version (${latestVersion}) is available. Do you want to update?`)) {
-                    window.location.href = repoURL;  // Redirect to the latest userscript version
+    const scriptURL = "https://raw.githubusercontent.com/Gavor-gif/Flipanim-test/main/flipanim.user.js"; // GitHub raw URL
+    const currentVersion = "2.0";
+
+    function checkForUpdates() {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: scriptURL,
+            onload: function(response) {
+                const latestScript = response.responseText;
+                const versionMatch = latestScript.match(/@version\s+([\d.]+)/);
+
+                if (versionMatch) {
+                    const latestVersion = versionMatch[1];
+
+                    if (latestVersion !== currentVersion) {
+                        console.log(`Update available! Latest version: ${latestVersion}`);
+                        alert(`New version ${latestVersion} available!`);
+
+                        // Window prompt asking if user wants to install the update
+                        const userResponse = prompt(`New version ${latestVersion} is available. Do you want to install it? (yes/no)`).toLowerCase();
+
+                        if (userResponse === "yes" || userResponse === "y") {
+                            updateScript(latestScript);
+                        } else {
+                            console.log("User declined the update.");
+                        }
+                    }
                 }
             }
-        }
-    });
-}
-
-// Apply dark mode styles to the page
-function applyDarkMode() {
-    GM_addStyle(`
-        body {
-            background-color: #181818;
-            color: #e0e0e0;
-        }
-        .flipanim-header, .footer {
-            background-color: #202020;
-        }
-        .flipanim-main {
-            background-color: #222222;
-        }
-        a {
-            color: #1e90ff;
-        }
-        .button {
-            background-color: #333333;
-            border: 1px solid #444444;
-        }
-    `);
-}
-
-// Apply light mode styles to the page
-function applyLightMode() {
-    GM_addStyle(`
-        body {
-            background-color: #ffffff;
-            color: #000000;
-        }
-        .flipanim-header, .footer {
-            background-color: #f4f4f4;
-        }
-        .flipanim-main {
-            background-color: #ffffff;
-        }
-        a {
-            color: #007bff;
-        }
-        .button {
-            background-color: #e0e0e0;
-            border: 1px solid #cccccc;
-        }
-    `);
-}
-
-// Toggle dark mode and light mode
-function toggleDarkMode() {
-    const currentMode = localStorage.getItem('theme') || 'light';
-    if (currentMode === 'light') {
-        localStorage.setItem('theme', 'dark');
-        applyDarkMode();
-    } else {
-        localStorage.setItem('theme', 'light');
-        applyLightMode();
-    }
-}
-
-// On page load, apply the saved theme
-(function() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        applyDarkMode();
-    } else {
-        applyLightMode();
+        });
     }
 
-    // Check for updates from GitHub
-    checkForUpdates();
+    function updateScript(scriptContent) {
+        const blob = new Blob([scriptContent], { type: 'application/javascript' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'flipanim.user.js';
+        link.click();
+    }
 
-    // Add a toggle button for dark/light mode
-    const toggleButton = document.createElement('button');
-    toggleButton.textContent = 'Toggle Dark Mode';
-    toggleButton.style.position = 'fixed';
-    toggleButton.style.bottom = '20px';
-    toggleButton.style.right = '20px';
-    toggleButton.style.padding = '10px';
-    toggleButton.style.backgroundColor = '#444444';
-    toggleButton.style.color = '#ffffff';
-    toggleButton.style.border = 'none';
-    toggleButton.style.cursor = 'pointer';
-    toggleButton.style.zIndex = '9999';
-    toggleButton.addEventListener('click', toggleDarkMode);
+    // Check for updates every 1 minute (60000 milliseconds)
+    const lastChecked = GM_getValue('lastChecked', 0);
+    const now = Date.now();
 
-    document.body.appendChild(toggleButton);
+    if (now - lastChecked > 60000) {
+        checkForUpdates();
+        GM_setValue('lastChecked', now);
+    }
+
 })();
